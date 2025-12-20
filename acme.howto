@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+
+# -------------------------
+# Domain variables
+# -------------------------
+CN="dns99"
+SAN1="dns99.gateway.msft"
+SAN2="dns99.home.local"
+
+# -------------------------
+# PFX variables
+# -------------------------
+PFX_NAME="dns-server.pfx"
+PFX_PASSWORD="dns-server"
+PFX_OUTPUT_DIR="/opt/docker/dns-server/config"
+
+# -------------------------
+# ACME / Docker variables
+# -------------------------
+ACME_HOME="/root/.acme.sh"
+DOCKER_COMPOSE_FILE="/opt/docker/dns-server/docker-compose.yml"
+
+# -------------------------
+# Issue cert and install as PFX
+# -------------------------
+acme.sh --issue --standalone \
+  -d "${CN}" \
+  -d "${SAN1}" \
+  -d "${SAN2}" \
+  -k 2048 && \
+acme.sh --install-cert -d "${CN}" \
+  --reloadcmd "
+    ${ACME_HOME}/acme.sh --to-pkcs12 \
+      --domain ${CN} \
+      --password '${PFX_PASSWORD}' && \
+    cp ${ACME_HOME}/${CN}/${CN}.pfx \
+       ${PFX_OUTPUT_DIR}/${PFX_NAME} && \
+    docker compose -f ${DOCKER_COMPOSE_FILE} restart
+  "
