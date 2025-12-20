@@ -1,0 +1,8 @@
+services:
+  dns-server:
+    image: technitium/dns-server:latest
+    container_name: dns99
+    network_mode: host
+    volumes:
+      - ./config:/etc/dns
+    restart: unless-stopped
