@@ -1,39 +1,45 @@
-#!/usr/bin/env bash
+# 2/28/2026 with variables
 
-# -------------------------
-# Domain variables
-# -------------------------
-CN="dns99"
-SAN1="dns99.gateway.msft"
-SAN2="dns99.home.local"
+######
+# Register ACME script - Need only one time per server
+######
+#!/bin/bash
+# Variables
+export EAB_KID="<EAB_KID>"
+export EAB_HMAC_KEY="<EAB_HMAC>"
+export ACME_SERVER="https://<your acme server>"
+# Register ACME Account
+acme.sh --register-account \
+  --insecure \
+  --force \
+  --eab-kid "$EAB_KID" \
+  --eab-hmac-key "$EAB_HMAC_KEY" \
+  --server "$ACME_SERVER"
 
-# -------------------------
-# PFX variables
-# -------------------------
-PFX_NAME="dns-server.pfx"
-PFX_PASSWORD="dns-server"
-PFX_OUTPUT_DIR="/opt/docker/dns-server/config"
+# Set Default CA
+acme.sh --set-default-ca --server "$ACME_SERVER"
 
-# -------------------------
-# ACME / Docker variables
-# -------------------------
-ACME_HOME="/root/.acme.sh"
-DOCKER_COMPOSE_FILE="/opt/docker/dns-server/docker-compose.yml"
-
-# -------------------------
-# Issue cert and install as PFX
-# -------------------------
-acme.sh --issue --standalone \
-  -d "${CN}" \
-  -d "${SAN1}" \
-  -d "${SAN2}" \
-  -k 2048 && \
-acme.sh --install-cert -d "${CN}" \
-  --reloadcmd "
-    ${ACME_HOME}/acme.sh --to-pkcs12 \
-      --domain ${CN} \
-      --password '${PFX_PASSWORD}' && \
-    cp ${ACME_HOME}/${CN}/${CN}.pfx \
-       ${PFX_OUTPUT_DIR}/${PFX_NAME} && \
-    docker compose -f ${DOCKER_COMPOSE_FILE} restart
-  "
+######
+# Main ACME request and convertion to PFX
+######
+#!/bin/bash
+# --- Configuration ---
+CN="dns.home.local"
+SAN1="<SAN1>"
+SAN2="<SAN2>"
+CERT_PATH="/root/.acme.sh/${CN}"
+EXPORT_PATH="/opt/docker/dns-server/config/dns-server.pfx"
+DOCKER_YAML="/opt/docker/dns-server/docker-compose.yml"
+PASSWORD="<password, hidden file, or env variable>"
+# --- Execution ---
+acme.sh --issue --nginx \
+  -d "$CN" \
+  -d "$SAN1" \
+  -d "$SAN2" \
+  -k 2048 \
+  --reloadcmd "openssl pkcs12 -export \
+    -out $EXPORT_PATH \
+    -inkey $CERT_PATH/$CN.key \
+    -in $CERT_PATH/fullchain.cer \
+    -passout pass:'$PASSWORD' && \
+    docker compose -f $DOCKER_YAML restart"
