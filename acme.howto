@@ -20,7 +20,7 @@ acme.sh --register-account \
 acme.sh --set-default-ca --server "$ACME_SERVER"
 
 ######
-# Main ACME request and convertion to PFX
+# Main ACME request and export as PFX with password
 ######
 #!/bin/bash
 # --- Configuration ---
